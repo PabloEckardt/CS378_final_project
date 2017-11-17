@@ -36,6 +36,10 @@ def parse_args():
     target_group.add_argument('-I', '--ip-addresses', action='append', nargs='+', type=ip_address, help='the IP address to deauth')
     target_group.add_argument('-A', '--all', action='store_true', help='target all clients on the network')
 
+    network_group = parser.add_argument_group('network', 'specify the access points to deauth from (required)')
+    network_group.add_argument('-B', '--bssids', action='append', nargs='+', type=mac_address, help='the BSSIDs of the networks to send deauth packets to')
+    network_group.add_argument('-n', '--network-names', '-E', '--essids', '-S', '--ssids', action='append', nargs='+', help='the names of the networks to send deauth packets to', dest='network_names')
+
     subparsers = parser.add_subparsers(title="actions", description='valid actions (no action means to deauth a set of targets)', dest='action')
     bully_parser = subparsers.add_parser('bully', help='deauth a target from all networks')
     bully_target_group = bully_parser.add_mutually_exclusive_group(required=True)
@@ -51,14 +55,20 @@ def parse_args():
 
 
 def deauth_clients(args):
-    mac_addresses = args.mac_addresses
-    ip_addresses = args.ip_addresses
-    deauth_all = args.all
+    # targets to deauth
+    mac_addresses = args.mac_addresses # list of MAC address strings or None
+    ip_addresses = args.ip_addresses # list of IP address strings or None
+    deauth_all = args.all # boolean
+
+    # networks to send deauth packets too
+    bssids = args.bssids # list of BSSID MAC addresses or None
+    network_names = args.network_names # list of string network names or None
+
 
 
 def bully_target(args):
-    target_mac = args.mac_address
-    target_ip = args.ip_address
+    target_mac = args.mac_address # MAC address string or None
+    target_ip = args.ip_address # IP address string or None
 
 
 def main():
