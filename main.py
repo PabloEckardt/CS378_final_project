@@ -3,10 +3,10 @@ import re
 import sys
 
 
-_mac_address_pattern = re.compile('[0-9a-f]{2}(:[0-9a-f]){5}')
+_mac_address_pattern = re.compile('[0-9a-f]{2}(:[0-9a-f]{2}){5}')
 
 def mac_address(addr):
-    """ mac_address checks that a given string is in mac address format """
+    """ mac_address checks that a given string is in MAC address format """
     mac = addr.lower()
     if not _mac_address_pattern.fullmatch(mac):
         raise TypeError('{} does not match a MAC address pattern'.format(addr))
@@ -14,6 +14,7 @@ def mac_address(addr):
 
 
 def ip_address(addr):
+    """ ip_address checks that a given string is in IP address format """
     parts = addr.split('.')
     if len(parts) != 4:
         raise TypeError('{} does not match an IP address pattern'.format(addr))
@@ -31,14 +32,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Deauthenticate targets from a wifi network.')
     
     target_group = parser.add_argument_group('target', 'specify a target machine to deauth from a network (required)')
-    target_group.add_argument('-m', '--mac-addresses', action='append', nargs='+', type=mac_address, help='the MAC addresses to deauth')
+    target_group.add_argument('-M', '--mac-addresses', action='append', nargs='+', type=mac_address, help='the MAC addresses to deauth')
     target_group.add_argument('-I', '--ip-addresses', action='append', nargs='+', type=ip_address, help='the IP address to deauth')
     target_group.add_argument('-A', '--all', action='store_true', help='target all clients on the network')
 
-    subparsers = parser.add_subparsers(dest='action')
+    subparsers = parser.add_subparsers(title="actions", description='valid actions (no action means to deauth a set of targets)', dest='action')
     bully_parser = subparsers.add_parser('bully', help='deauth a target from all networks')
     bully_target_group = bully_parser.add_mutually_exclusive_group(required=True)
-    bully_target_group.add_argument('-m', '--mac-address', type=mac_address, help='the MAC address to bully')
+    bully_target_group.add_argument('-M', '--mac-address', type=mac_address, help='the MAC address to bully')
     bully_target_group.add_argument('-I', '--ip-address', type=ip_address, help='the IP address to bully')
 
     args = parser.parse_args()
@@ -53,13 +54,11 @@ def deauth_clients(args):
     mac_addresses = args.mac_addresses
     ip_addresses = args.ip_addresses
     deauth_all = args.all
-    print(locals())
 
 
 def bully_target(args):
     target_mac = args.mac_address
     target_ip = args.ip_address
-    print(locals())
 
 
 def main():
