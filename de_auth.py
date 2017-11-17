@@ -53,12 +53,3 @@ def attack_clients(clients_dict,
 if __name__ == "__main__":
     print ("deauth-module")
 
-    CYCLES = 100
-    count = 0
-    while count < CYCLES:
-        count = 0
-
-
-
-
-
