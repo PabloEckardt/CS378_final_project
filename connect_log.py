@@ -3,8 +3,6 @@ from datetime import datetime
 import time
 import sys
 
-
-
 def log_pings(TIME_LIMIT=5,HOST="8.8.8.8"):
 
     plot = [] # array of tuples of (success to ms or failures to ms
@@ -24,13 +22,10 @@ def log_pings(TIME_LIMIT=5,HOST="8.8.8.8"):
         plot.append((DIFF.total_seconds(),ret))
         time.sleep(.05)
 
-
-
     with open ("net_report.csv", "w") as outfile:
         outfile.write("error,timings\n")
         for point in plot:
             outfile.write(str(point[0]) + "," + str(point[1]) + "\n")
-
 
 if __name__ == "__main__":
 
