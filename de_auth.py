@@ -66,4 +66,3 @@ def attack_clients(clients_dict,
 
 if __name__ == "__main__":
     pass
-
