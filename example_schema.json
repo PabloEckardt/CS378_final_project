@@ -1,0 +1,17 @@
+{
+    "utexas_wifi": {
+        "10": {
+            "20:0c:c8:18:27:f8": {
+                "27:eb:8c:7f:5f:11": {
+                    "device name": "raspberry pi3",
+                    "operating system": "linux 3.5-4.1",
+                    "ports": [
+                        80,
+                        22,
+                        443
+                    ]
+                }
+            }
+        }
+    }
+}
