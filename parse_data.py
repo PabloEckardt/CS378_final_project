@@ -1,5 +1,7 @@
 import csv
+import glob
 import json
+import os
 
 """
     DICTIONARY 1 FORMAT
@@ -44,12 +46,13 @@ import json
 
 """
 def get_file_name():
-    # TODO write function that finds the csv file or whatever
-    return "testcap-01.csv"
+    # gets latest file name
+    airodump_files = glob.glob("/tmp/dump-*.csv")
+    return max(airodump_files, key=os.path.getctime)
 
 def parse_network_packets(file_name):
     essid_data = {}
-    with open('testcap-01.csv', newline='') as csvfile:
+    with open(file_name, newline='') as csvfile:
         reader = csv.reader(csvfile, skipinitialspace=True)
         bssid_to_essid_and_channel = {}
         # first empty row denotes the start of the access points table
