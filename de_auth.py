@@ -114,6 +114,7 @@ def de_auth_client( client_mac,
     """
     return r
 
+
 def attack_clients(clients_dict,
                    de_auths_per_client,
                    adapter,
@@ -156,7 +157,8 @@ def attack_clients(clients_dict,
                     print ("sleeping for: " + str(time_between_cycles))
                     time.sleep(time_between_cycles)
 
-    print ("terminating list cycle attack")
+    print ("terminating attack")
+
 
 if __name__ == "__main__":
     pass
