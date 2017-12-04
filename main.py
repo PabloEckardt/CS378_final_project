@@ -128,7 +128,7 @@ def bully_target(args):
 
     essid_data, inverted_index = discover_network()
 
-    if target_mac not in inverted_index:
+    if args.target not in inverted_index:
         print('target not found', file=sys.stderr)
         sys.exit(1)
 
