@@ -78,14 +78,20 @@ def parse_args():
 
 
 def discover_network(args=None):
-    __location__ = os.path.realpath(
-                os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    discover_script_path = os.path.join(__location__, 'discovery.sh')
-    discovery_results = subprocess.run([discover_script_path], stderr=subprocess.PIPE)
-    if discovery_results.returncode != 0:
-        print(discovery_results.stderr, file=sys.stderr)
-        sys.exit(1)
-    essid_data = parse_data.parse_network_packets(parse_data.get_file_name())
+    while True:
+        try:
+            essid_data = parse_data.parse_network_packets(parse_data.get_file_name())
+            break
+        except:
+            print('running discover.sh')
+            __location__ = os.path.realpath(
+                        os.path.join(os.getcwd(), os.path.dirname(__file__)))
+            discover_script_path = os.path.join(__location__, 'discovery.sh')
+            discovery_results = subprocess.run([discover_script_path], stderr=subprocess.PIPE)
+            if discovery_results.returncode != 0:
+                print(discovery_results.stderr, file=sys.stderr)
+                sys.exit(1)
+
     if args is not None:
         # if args are passed in, then we need to print the data
         parse_data.display_json(essid_data)
