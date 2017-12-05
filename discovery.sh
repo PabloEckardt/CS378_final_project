@@ -1,7 +1,7 @@
 #!/bin/bash
 
 discover() {
-  local TIMEOUT=60s
+  local TIMEOUT=120s
 #  airmon-ng check kill >/dev/null
 #  ifconfig eth0 down
 #  airmon-ng start wlan0 >/dev/null

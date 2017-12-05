@@ -16,10 +16,12 @@ def get_siege_attack_list(d, essid, clients):
     # list of dictionaries to make it easy to change channels
     l = {}
     for channel in d[essid]:
+        if channel not in l:
+            l[channel] = []
         for  ap_mac in d[essid][channel]:
+            print (d[essid][channel])
             for client_mac in d[essid][channel][ap_mac]:
-                if len(clients) == 0 or client_mac in clients:
-                    l.append({"channel": channel, "client_mac": client_mac, "ap_mac":ap_mac})
+                l[channel].append({"client_mac":client_mac, "ap_mac":ap_mac})
 
     return l
 
@@ -73,6 +75,16 @@ def begin_attack(
 
     CURR_TIME = datetime.now()
     TIME_DIFF = 0
+    import json
+
+    print (mode)
+    print(victims_mac)
+    print(net_clients)
+    print (ESSID)
+    print (attack_list)
+    print ("end")
+    print ("")
+    print ("")
 
     i = 0
     channels = list(attack_list.keys())
@@ -81,11 +93,11 @@ def begin_attack(
 
         channel = channels[i]
         # set the channel
-        time.sleep(.5)
+        time.sleep(.1)
         print ("starting airodump")
         airodump = hop_to_channel(channel)
-        time.sleep(.5)
-        attack_clients(attack_list[channel], 1, wireless_adapter, list_cycles=2, time_between_cycles=0 )
+        time.sleep(.1)
+        attack_clients(attack_list[channel], 2, wireless_adapter, list_cycles=4, time_between_cycles=0 )
         airodump.kill()
         print ("airodump killed")
         #TIME_DIFF = datetime.now() - CURR_TIME
