@@ -23,7 +23,8 @@ def get_siege_attack_list(d, essid, clients):
             l[channel] = []
         for  ap_mac in d[essid][channel]:
             for client_mac in d[essid][channel][ap_mac]:
-                l[channel].append({"client_mac":client_mac, "ap_mac":ap_mac})
+                if len(client_mac) == 0 or client_mac in clients:
+                    l[channel].append({"client_mac":client_mac, "ap_mac":ap_mac})
 
     return l
 
