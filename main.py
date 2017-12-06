@@ -32,7 +32,6 @@ def validate_target(target, arp_table, name_to_mac):
     except TypeError:
         pass
 
-    hostname = target.upper()
     if hostname in name_to_mac.keys():
         return name_to_mac[hostname]
     else:
