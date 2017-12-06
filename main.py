@@ -69,6 +69,18 @@ def duration(dur):
         raise TypeError('{} does not match a duration pattern'.format(dur))
 
 
+def interactive_choice(arp_table):
+    targets = list(arp_table.values())
+    while True:
+        for i, target in enumerate(targets):
+            print('[{}] {}'.format(i, target))
+        key = input('Enter a number indicating which machine you want to bully: ')
+        try:
+            return targets[int(key)].mac
+        except:
+            print('Please enter a number from 0 to {}'.format(len(targets) - 1))
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Deauthenticate targets from a wifi network.')
 
@@ -82,16 +94,27 @@ def parse_args():
     bully_parser = subparsers.add_parser('bully', help='deauth a target from all networks')
     bully_parser.add_argument('-a', '--adapter', help='the wireless adapter to use (default wlan0mon)', default='wlan0mon')
     bully_parser.add_argument('-d', '--attack-duration', type=duration, help='the length in time to conduct this attack (format is 1s for 1 second, 1m for 1 minute, 1h for 1 hour). default is 180s', default=180)
-    bully_parser.add_argument('target', help='the target to deauth. The target can be a MAC address, IP address or hostname')
+    bully_parser.add_argument('-i', '--interactive', action='store_true', help='interactively choose the potential target to bully')
+    bully_parser.add_argument('target', nargs='?', help='the target to deauth. The target can be a MAC address, IP address or hostname')
 
     discover_parser = subparsers.add_parser('discover', help='locate targets to deauth')
 
-    arp_table, name_to_mac = discovery.get_hostnames(discovery.arp_scan())
-
     args = parser.parse_args()
+
     if args.action is None:
         parser.print_help()
         sys.exit(0)
+    elif args.action == 'bully':
+        if args.target is not None and args.interactive:
+            print('target cannot be specified if --interactive is given', file=sys.stderr)
+            bully_parser.print_usage(file=sys.stderr)
+            sys.exit(1)
+        elif args.target is None and not args.interactive:
+            print('target must be specified if --interactive is not given', file=sys.stderr)
+            bully_parser.print_usage(file=sys.stderr)
+            sys.exit(1)
+
+    arp_table, name_to_mac = discovery.get_hostnames(discovery.arp_scan())
 
     if args.action == 'siege':
         if 'all' in args.target:
@@ -104,11 +127,14 @@ def parse_args():
                     print(e, file=sys.stderr)
                     sys.exit(1)
     elif args.action == 'bully':
-        try:
-            args.target = validate_target(args.target, arp_table, name_to_mac)
-        except TypeError as e:
-            print(e, file=sys.stderr)
-            sys.exit(1)
+        if args.interactive:
+            args.target = interactive_choice(arp_table)
+        else:
+            try:
+                args.target = validate_target(args.target, arp_table, name_to_mac)
+            except TypeError as e:
+                print(e, file=sys.stderr)
+                sys.exit(1)
 
     return args
 
