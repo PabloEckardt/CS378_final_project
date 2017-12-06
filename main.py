@@ -158,7 +158,6 @@ def discover_network(args=None):
 
     if args is not None:
         # if args are passed in, then we need to print the data
-        #parse_data.display_json(essid_data)
         simple_data = defaultdict(set)
         for essid, channels in essid_data.items():
             for channel, bssids in channels.items():
