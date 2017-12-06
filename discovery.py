@@ -32,8 +32,9 @@ def arp_scan():
     return arp_table
 
 
-def get_device_names(arp_table):
+def get_hostnames(arp_table):
     targets = list(arp_table.keys())
+    name_to_mac = {}
 
     for i in range(3):
 	    nmproc = NmapProcess(targets, "-sn")
@@ -45,11 +46,14 @@ def get_device_names(arp_table):
 	        for host in nmap_report.hosts:
 	        	if host.hostnames:
 	        		arp_table[host.address].name = host.hostnames[0]
+	        		name_to_mac[host.hostnames[0]] = arp_table[host.address].mac
 	    except NmapParserException:
 	        pass
 	
-    return arp_table
+    return arp_table, name_to_mac
 
 if __name__ == "__main__":
 	arp_table = arp_scan()
-	print(get_device_names(arp_table))
+	arp_table, name_to_mac = get_hostnames(arp_table)
+	print(arp_table)
+	print(name_to_mac)

