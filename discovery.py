@@ -10,7 +10,7 @@ import subprocess
 
 class Target:
 
-    def __init__(self, ip, mac, name=None):
+    def __init__(self, mac, ip=None, name=None):
         self.name = name
         self.ip = ip
         self.mac = mac
@@ -30,14 +30,16 @@ def arp_scan():
         data = line.split('\t')
         if len(data) == 3:
             ip, mac, name = data
-            arp_table[ip] = Target(ip, mac.upper())
+            mac = mac.upper()
+            target = Target(mac, ip)
+            arp_table[ip] = target
+            arp_table[mac] = target
 
     return arp_table
 
 
 def get_hostnames(arp_table):
     targets = list(arp_table.keys())
-    name_to_mac = {}
 
     for i in range(3):
         nmproc = NmapProcess(targets, "-sn")
@@ -48,15 +50,15 @@ def get_hostnames(arp_table):
 
             for host in nmap_report.hosts:
                 if host.hostnames:
-                    arp_table[host.address].name = host.hostnames[0]
-                    name_to_mac[host.hostnames[0]] = arp_table[host.address].mac
+                    name = host.hostnames[0]
+                    arp_table[host.address].name = name
+                    arp_table[name] = arp_table[host.address]
         except NmapParserException:
             pass
 	
-    return arp_table, name_to_mac
+    return arp_table
 
 if __name__ == "__main__":
     arp_table = arp_scan()
-    arp_table, name_to_mac = get_hostnames(arp_table)
+    arp_table = get_hostnames(arp_table)
     print(arp_table)
-    print(name_to_mac)

@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 import os
 import re
 import subprocess
@@ -17,7 +18,7 @@ _duration_multiplier = {
 }
 
 
-def validate_target(target, arp_table, name_to_mac):
+def validate_target(target, arp_table):
     """ validate_target verifies that target is a valid MAC address, IP address or hostname """
     try:
         mac = mac_address(target)
@@ -32,8 +33,8 @@ def validate_target(target, arp_table, name_to_mac):
     except TypeError:
         pass
 
-    if target in name_to_mac.keys():
-        return name_to_mac[target]
+    if target in arp_table:
+        return arp_table[target].mac
     else:
         raise TypeError('{} is not a valid target'.format(target))
 
@@ -114,24 +115,25 @@ def parse_args():
             bully_parser.print_usage(file=sys.stderr)
             sys.exit(1)
 
-    arp_table, name_to_mac = discovery.get_hostnames(discovery.arp_scan())
-
     if args.action == 'siege':
+        arp_table = discovery.get_hostnames(discovery.arp_scan())
+
         if 'all' in args.target:
             args.target = []
         else:
             for i in range(len(args.target)):
                 try:
-                    args.target[i] = validate_target(args.target[i], arp_table, name_to_mac)
+                    args.target[i] = validate_target(args.target[i], arp_table)
                 except TypeError as e:
                     print(e, file=sys.stderr)
                     sys.exit(1)
     elif args.action == 'bully':
+        arp_table = discovery.get_hostnames(discovery.arp_scan())
         if args.interactive:
             args.target = interactive_choice(arp_table)
         else:
             try:
-                args.target = validate_target(args.target, arp_table, name_to_mac)
+                args.target = validate_target(args.target, arp_table)
             except TypeError as e:
                 print(e, file=sys.stderr)
                 sys.exit(1)
@@ -156,7 +158,18 @@ def discover_network(args=None):
 
     if args is not None:
         # if args are passed in, then we need to print the data
-        parse_data.display_json(essid_data)
+        #parse_data.display_json(essid_data)
+        simple_data = defaultdict(set)
+        for essid, channels in essid_data.items():
+            for channel, bssids in channels.items():
+                for bssid, clients in bssids.items():
+                    for client_mac in clients:
+                        simple_data[essid].add(client_mac)
+        arp_table = discovery.get_hostnames(discovery.arp_scan())
+        for essid, clients in simple_data.items():
+            print("Access Point: " + essid)
+            for client in clients:
+                print('    Deauth target: ' + str(arp_table.get(client, discovery.Target(client))))
         return
     inverted_index = parse_data.invert_index(essid_data)
     return essid_data, inverted_index
