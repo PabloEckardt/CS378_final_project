@@ -97,15 +97,15 @@ def parse_args():
         if 'all' in args.target:
             args.target = []
         else:
-            for t in args.target:
+            for i in range(len(args.target)):
                 try:
-                    validate_target(t, arp_table, name_to_mac)
+                    args.target[i] = validate_target(args.target[i], arp_table, name_to_mac)
                 except TypeError as e:
                     print(e, file=sys.stderr)
                     sys.exit(1)
     elif args.action == 'bully':
         try:
-            validate_target(args.target, arp_table, name_to_mac)
+            args.target = validate_target(args.target, arp_table, name_to_mac)
         except TypeError as e:
             print(e, file=sys.stderr)
             sys.exit(1)
