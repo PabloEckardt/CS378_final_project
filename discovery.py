@@ -22,7 +22,7 @@ class Target:
         return "(" + ", ".join(filter(None, [self.name, self.ip, self.mac])) + ")"
 
 def arp_scan():
-    scan_results = subprocess.run(["sudo", "arp-scan", "--localnet"], stdout=subprocess.PIPE)
+    scan_results = subprocess.run(["arp-scan", "--localnet"], stdout=subprocess.PIPE)
     output = scan_results.stdout.decode("utf-8")
 
     arp_table = {}
