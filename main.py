@@ -160,9 +160,11 @@ def bully_target(args):
 
     essid_data, inverted_index = discover_network()
 
+    """
     if args.target not in inverted_index:
         print('target not found', file=sys.stderr)
         sys.exit(1)
+    """
 
     begin_attack(essid_data, inverted_index, **kwargs)
 
