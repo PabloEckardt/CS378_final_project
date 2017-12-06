@@ -27,7 +27,7 @@ def arp_scan():
         data = line.split('\t')
         if len(data) == 3:
             ip, mac, name = data
-            arp_table[ip] = Target(ip, mac)
+            arp_table[ip] = Target(ip, mac.upper())
 
     return arp_table
 
