@@ -4,36 +4,52 @@
 #import nmap
 import json
 import subprocess
-import os
+from libnmap.process import NmapProcess
+from libnmap.parser import NmapParser, NmapParserException
+import subprocess
 
-from threading import Timer
+class Target:
 
-subprocess.call(['airmon-ng', 'check', 'kill'], stdout=subprocess.PIPE)
-subprocess.call(['ifconfig', 'eth0', 'down'], stdout=subprocess.PIPE)
-subprocess.call(['airmon-ng', 'start', 'wlan1'], stdout=subprocess.PIPE)
+	def __init__(self, ip, mac, name=None):
+		self.name = name
+		self.ip = ip
+		self.mac = mac
 
-kill = lambda process: process.kill()
-cmd = ['airodump-ng', '-c', '1', '-a', 'wlan1mon']
-network_discovery = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-my_timer = Timer(5, kill, [network_discovery])
-try:
-    my_timer.start()
-    stdout, stderr = network_discovery.communicate()
-    print(stdout)
-finally:
-    my_timer.cancel()
+	def __repr__(self):
+		return "Target(" + ", ".join(filter(None, [self.name, self.ip, self.mac])) + ")"
 
-#run airodump for single channel, then timeout
+def arp_scan():
+    scan_results = subprocess.run(["arp-scan", "--localnet"], stdout=subprocess.PIPE)
+    output = scan_results.stdout.decode("utf-8")
 
-#read testcap-01 files and parse data
+    arp_table = {}
+    for line in output.splitlines():
+        data = line.split('\t')
+        if len(data) == 3:
+            ip, mac, name = data
+            arp_table[ip] = Target(ip, mac)
 
-#store data to JSON output file
+    return arp_table
 
-###########################################
-#reading data from file sample
-#import csv
 
-#file = csv.reader(open('testcap-01.csv', newline=''), delimiter=' ',quotechar='|')
-#for row in file:
-#	print(','.join(row))
+def get_device_names(arp_table):
+    targets = list(arp_table.keys())
 
+    for i in range(3):
+	    nmproc = NmapProcess(targets, "-sn")
+	    nmproc.run()
+
+	    try:
+	        nmap_report = NmapParser.parse(nmproc.stdout)
+	        
+	        for host in nmap_report.hosts:
+	        	if host.hostnames:
+	        		arp_table[host.address].name = host.hostnames[0]
+	    except NmapParserException:
+	        pass
+	
+    return arp_table
+
+if __name__ == "__main__":
+	arp_table = arp_scan()
+	print(get_device_names(arp_table))
