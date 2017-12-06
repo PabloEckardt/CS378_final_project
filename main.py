@@ -71,7 +71,14 @@ def duration(dur):
 
 
 def interactive_choice(arp_table):
-    targets = list(arp_table.values())
+    mac_set = set()
+    for key in arp_table:
+        try:
+            mac_address(key)
+            mac_set.add(key)
+        except:
+            pass
+    targets = list(arp_table[mac] for mac in mac_set)
     while True:
         for i, target in enumerate(targets):
             print('[{}] {}'.format(i, target))
